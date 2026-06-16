@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 101 Grade Tracker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f6f6f4; --bg3: #efefec;
+    --text: #1a1a18; --text2: #5a5a56; --text3: #9a9a94;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 10px; --radius-sm: 6px;
+    --info-bg: #e6f1fb; --info-text: #0c447c;
+    --success-bg: #eaf3de; --success-text: #27500a;
+    --warn-bg: #faeeda; --warn-text: #633806;
+    --danger-bg: #fcebeb; --danger-text: #791f1f;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'SF Mono', 'Consolas', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg2: #282825; --bg3: #323230;
+      --text: #f0f0ec; --text2: #a8a8a0; --text3: #686860;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --info-bg: #042c53; --info-text: #b5d4f4;
+      --success-bg: #173404; --success-text: #c0dd97;
+      --warn-bg: #412402; --warn-text: #fac775;
+      --danger-bg: #501313; --danger-text: #f7c1c1;
+    }
+  }
+  body { font-family: var(--font); background: var(--bg2); color: var(--text); min-height: 100vh; }
+  .app { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .app-header { margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .app-header h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .app-header p { font-size: 14px; color: var(--text2); }
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  @media(max-width:560px){ .upload-grid { grid-template-columns: 1fr; } }
+  .upload-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; cursor: pointer; transition: border-color 0.15s; position: relative; }
+  .upload-card:hover { border-color: var(--border2); }
+  .upload-card.has-file { border-color: #3b6d11; background: var(--success-bg); }
+  .upload-card input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .upload-icon { font-size: 22px; color: var(--text3); margin-bottom: 8px; }
+  .upload-card.has-file .upload-icon { color: var(--success-text); }
+  .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .upload-hint { font-size: 13px; color: var(--text2); }
+  .upload-card.has-file .upload-hint { color: var(--success-text); }
+  .run-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px; font-size: 14px; font-weight: 500; background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; color: var(--text); margin-bottom: 2rem; transition: background 0.15s; }
+  .run-btn:hover:not(:disabled) { background: var(--bg3); }
+  .run-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .sum-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .sum-card .num { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 4px; }
+  .sum-card .lbl { font-size: 12px; color: var(--text2); }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border); padding-bottom: 0; }
+  .tab { font-size: 13px; padding: 7px 16px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; border: 0.5px solid transparent; background: transparent; cursor: pointer; color: var(--text2); font-family: var(--font); transition: background 0.1s; border-bottom: none; }
+  .tab:hover { background: var(--bg3); color: var(--text); }
+  .tab.active { background: var(--bg); border-color: var(--border); border-bottom-color: var(--bg); color: var(--text); font-weight: 500; position: relative; top: 0.5px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .section-title { font-size: 15px; font-weight: 500; }
+  .badge { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .badge-new { background: var(--info-bg); color: var(--info-text); }
+  .badge-changed { background: var(--warn-bg); color: var(--warn-text); }
+  .action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .btn { font-size: 13px; padding: 7px 14px; background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; color: var(--text); display: inline-flex; align-items: center; gap: 6px; font-family: var(--font); transition: background 0.12s; }
+  .btn:hover { background: var(--bg3); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 520px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text2); border-bottom: 0.5px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg2); }
+  td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+  .grade-pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-weight: 500; font-size: 12px; }
+  .grade-pass { background: var(--success-bg); color: var(--success-text); }
+  .grade-fail { background: var(--danger-bg); color: var(--danger-text); }
+  .grade-pending { background: var(--bg3); color: var(--text2); }
+  .sg-link { color: var(--info-text); text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .sg-link:hover { text-decoration: underline; }
+  .empty-state { padding: 2.5rem; text-align: center; color: var(--text2); font-size: 14px; border: 0.5px dashed var(--border2); border-radius: var(--radius); }
+  .empty-state i { font-size: 28px; display: block; margin-bottom: 10px; opacity: 0.5; }
+  .loading { text-align: center; padding: 2.5rem; color: var(--text2); font-size: 14px; }
+  .error-msg { background: var(--danger-bg); border: 0.5px solid var(--danger-text); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger-text); margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; }
+  .asana-box { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .asana-box pre { white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 12.5px; color: var(--text); line-height: 1.7; }
+  .sheets-preview { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  .sheets-preview table { min-width: 0; }
+  .sheets-preview th { font-size: 11px; }
+  .sheets-preview td { font-size: 12px; }
+  .sheets-section { margin-bottom: 1.25rem; }
+  .sheets-section-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; }
+  .tag-pending { background: var(--bg3); color: var(--text2); }
+  .tag-update { background: var(--warn-bg); color: var(--warn-text); }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.5rem 0; }
+  .arrow { color: var(--text3); margin: 0 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <h1>AI 101 grade tracker</h1>
+    <p>Upload two Canvas gradebook CSV exports to identify new students and grade changes.</p>
+  </div>
+
+  <div class="upload-grid">
+    <div class="upload-card" id="card1">
+      <input type="file" accept=".csv" id="file1" onchange="handleFile(1, this)">
+      <div class="upload-label">Previous export</div>
+      <i class="fa-regular fa-file upload-icon"></i>
+      <div class="upload-title" id="name1">Upload baseline CSV</div>
+      <div class="upload-hint" id="hint1">The earlier gradebook export</div>
+    </div>
+    <div class="upload-card" id="card2">
+      <input type="file" accept=".csv" id="file2" onchange="handleFile(2, this)">
+      <div class="upload-label">Current export</div>
+      <i class="fa-regular fa-file upload-icon"></i>
+      <div class="upload-title" id="name2">Upload today's CSV</div>
+      <div class="upload-hint" id="hint2">The latest gradebook export</div>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" disabled onclick="runComparison()">
+    <i class="fa-solid fa-arrows-rotate"></i> Compare gradebooks
+  </button>
+
+  <div id="errorBox"></div>
+  <div id="loadingBox" style="display:none" class="loading"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Comparing...</div>
+
+  <div id="resultsWrap" style="display:none">
+    <div class="summary-grid">
+      <div class="sum-card">
+        <div class="num" id="sumNew">0</div>
+        <div class="lbl">New students</div>
+      </div>
+      <div class="sum-card">
+        <div class="num" id="sumChanged">0</div>
+        <div class="lbl">Grade changes</div>
+      </div>
+      <div class="sum-card">
+        <div class="num" id="sumPending">0</div>
+        <div class="lbl">Grade pending</div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('new')">New students</button>
+      <button class="tab" onclick="switchTab('changed')">Grade changes</button>
+      <button class="tab" onclick="switchTab('sheets')">Copy to Sheets</button>
+      <button class="tab" onclick="switchTab('formulas')">Hyperlink formulas</button>
+      <button class="tab" onclick="switchTab('asana')">Asana task</button>
+    </div>
+
+    <div class="tab-content active" id="tab-new">
+      <div id="newStudentsTable"></div>
+    </div>
+    <div class="tab-content" id="tab-changed">
+      <div id="changedStudentsTable"></div>
+    </div>
+    <div class="tab-content" id="tab-sheets">
+      <div id="sheetsContent"></div>
+    </div>
+    <div class="tab-content" id="tab-formulas">
+      <div id="formulasContent"></div>
+    </div>
+    <div class="tab-content" id="tab-asana">
+      <div id="asanaContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SG_BASE = 'https://launchcode.instructure.com/courses/248/gradebook/speed_grader?assignment_id=22026&student_id=';
+let csvData = {1: null, 2: null};
+let results = null;
+
+function handleFile(num, input) {
+  const f = input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    csvData[num] = parseCSV(e.target.result);
+    document.getElementById('name' + num).textContent = f.name;
+    document.getElementById('hint' + num).textContent = csvData[num].rows.length + ' students loaded';
+    document.getElementById('card' + num).classList.add('has-file');
+    if (csvData[1] && csvData[2]) document.getElementById('runBtn').disabled = false;
+  };
+  reader.readAsText(f);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const headers = splitCSVLine(lines[0]);
+  const rows = lines.slice(1).map(l => {
+    const vals = splitCSVLine(l);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
+    return obj;
+  }).filter(r => r['Student'] && !['points possible','student'].includes(r['Student'].toLowerCase()));
+  return { headers, rows };
+}
+
+function splitCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') inQ = !inQ;
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function getCapstoneGrade(row) {
+  const key = Object.keys(row).find(k => k.includes('Capstone Project: Reduce Your Workload'));
+  return key ? (row[key] || '').trim() : '';
+}
+
+function getStudentId(row) {
+  return (row['ID'] || row['SIS User ID'] || '').trim().replace(/\D/g,'');
+}
+
+function gradeStatus(grade) {
+  if (!grade || grade === '' || grade === 'N/A') return 'pending';
+  const n = parseFloat(grade);
+  if (isNaN(n) || n === 0) return 'pending';
+  return n >= 70 ? 'pass' : 'fail';
+}
+
+function gradePill(grade) {
+  const s = gradeStatus(grade);
+  const label = (!grade || grade === '' || grade === '0') ? 'Pending' : grade;
+  return '<span class="grade-pill grade-' + s + '">' + label + '</span>';
+}
+
+function runComparison() {
+  document.getElementById('errorBox').innerHTML = '';
+  document.getElementById('loadingBox').style.display = 'block';
+  document.getElementById('resultsWrap').style.display = 'none';
+
+  setTimeout(() => {
+    try {
+      const d1 = csvData[1], d2 = csvData[2];
+      if (!d1 || !d2) throw new Error('Both files must be uploaded.');
+      if (!d2.headers.some(h => h.includes('Capstone Project: Reduce Your Workload')))
+        throw new Error('Could not find the Capstone Project column in the second CSV. Make sure you exported with the correct filter applied.');
+
+      const map1 = {};
+      d1.rows.forEach(r => { if (r['Student']) map1[r['Student']] = r; });
+
+      const newStudents = [], changedStudents = [];
+      d2.rows.forEach(r => {
+        const name = r['Student'];
+        if (!name) return;
+        const grade2 = getCapstoneGrade(r);
+        const id = getStudentId(r);
+        if (!map1[name]) {
+          newStudents.push({ name, id, grade: grade2, link: SG_BASE + id });
+        } else {
+          const grade1 = getCapstoneGrade(map1[name]);
+          if (grade1 !== grade2) {
+            changedStudents.push({ name, id, gradeBefore: grade1, gradeAfter: grade2, link: SG_BASE + id });
+          }
+        }
+      });
+
+      results = { newStudents, changedStudents };
+      renderResults(newStudents, changedStudents);
+    } catch(e) {
+      document.getElementById('loadingBox').style.display = 'none';
+      document.getElementById('errorBox').innerHTML = '<div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i>' + e.message + '</div>';
+    }
+  }, 200);
+}
+
+function renderResults(newStudents, changedStudents) {
+  document.getElementById('loadingBox').style.display = 'none';
+  const pending = newStudents.filter(s => gradeStatus(s.grade) === 'pending').length;
+  document.getElementById('sumNew').textContent = newStudents.length;
+  document.getElementById('sumChanged').textContent = changedStudents.length;
+  document.getElementById('sumPending').textContent = pending;
+
+  // New students tab
+  const newEl = document.getElementById('newStudentsTable');
+  if (!newStudents.length) {
+    newEl.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users"></i>No new students since last export</div>';
+  } else {
+    let h = '<div class="section-header"><span class="section-title">New students</span><span class="badge badge-new">' + newStudents.length + '</span></div>';
+    h += '<div class="action-bar"><button class="btn" onclick="copyNewStudents()"><i class="fa-regular fa-copy"></i> Copy all rows</button></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>ID</th><th>Grade</th><th>Tracker section</th><th>SpeedGrader</th></tr></thead><tbody>';
+    newStudents.forEach(s => {
+      const gs = gradeStatus(s.grade);
+      const section = gs === 'pending' ? 'Grade Pending' : gs === 'pass' ? 'Completed – Passed' : 'Not Passed – Resubmission';
+      h += '<tr><td>' + s.name + '</td><td>' + (s.id||'—') + '</td><td>' + gradePill(s.grade) + '</td><td>' + section + '</td><td>' + (s.id ? '<a class="sg-link" href="' + s.link + '" target="_blank">Open <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px"></i></a>' : '—') + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    newEl.innerHTML = h;
+  }
+
+  // Changed tab
+  const chEl = document.getElementById('changedStudentsTable');
+  if (!changedStudents.length) {
+    chEl.innerHTML = '<div class="empty-state"><i class="fa-solid fa-right-left"></i>No grade changes detected</div>';
+  } else {
+    let h = '<div class="section-header"><span class="section-title">Grade changes</span><span class="badge badge-changed">' + changedStudents.length + '</span></div>';
+    h += '<div class="action-bar"><button class="btn" onclick="copyChangedStudents()"><i class="fa-regular fa-copy"></i> Copy all rows</button></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>ID</th><th>Grade change</th><th>Tracker section</th><th>SpeedGrader</th></tr></thead><tbody>';
+    changedStudents.forEach(s => {
+      const gs = gradeStatus(s.gradeAfter);
+      const section = gs === 'pending' ? 'Update in Progress' : gs === 'pass' ? 'Completed – Passed' : 'Not Passed – Resubmission';
+      h += '<tr><td>' + s.name + '</td><td>' + (s.id||'—') + '</td><td>' + gradePill(s.gradeBefore) + ' <span class="arrow">→</span> ' + gradePill(s.gradeAfter) + '</td><td>' + section + '</td><td>' + (s.id ? '<a class="sg-link" href="' + s.link + '" target="_blank">Open <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px"></i></a>' : '—') + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    chEl.innerHTML = h;
+  }
+
+  renderSheetsTab(newStudents, changedStudents);
+  renderFormulasTab(newStudents, changedStudents);
+  renderAsanaTab(newStudents, changedStudents);
+  document.getElementById('resultsWrap').style.display = 'block';
+}
+
+function renderSheetsTab(newStudents, changedStudents) {
+  const el = document.getElementById('sheetsContent');
+  const pending = newStudents.filter(s => gradeStatus(s.grade) === 'pending');
+  const updateInProgress = changedStudents.filter(s => gradeStatus(s.gradeAfter) !== 'pending');
+  const passed = [...newStudents, ...changedStudents].filter(s => gradeStatus(s.gradeAfter || s.grade) === 'pass');
+  const failed = [...newStudents, ...changedStudents].filter(s => gradeStatus(s.gradeAfter || s.grade) === 'fail');
+
+  let h = '<p style="font-size:13px; color:var(--text2); margin-bottom:1rem">Each section below matches a row group in your tracker. Click "Copy rows" to copy tab-separated values ready to paste directly into Google Sheets.</p>';
+
+  function tableSection(title, tagClass, tagLabel, rows, cols) {
+    if (!rows.length) return '';
+    let s = '<div class="sheets-section">';
+    s += '<div class="sheets-section-label"><span>' + title + '</span><span class="tag ' + tagClass + '">' + tagLabel + '</span></div>';
+    s += '<div class="sheets-preview"><table><thead><tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+    rows.slice(0,3).forEach(r => {
+      s += '<tr>' + cols.map(c => '<td>' + (r[c]||'') + '</td>').join('') + '</tr>';
+    });
+    if (rows.length > 3) s += '<tr><td colspan="' + cols.length + '" style="color:var(--text3); font-style:italic">+ ' + (rows.length - 3) + ' more rows</td></tr>';
+    s += '</tbody></table></div>';
+    s += '<div class="action-bar"><button class="btn" onclick="copySection(\'' + encodeURIComponent(title) + '\')"><i class="fa-regular fa-copy"></i> Copy rows for "' + title + '"</button></div>';
+    s += '</div>';
+    return s;
+  }
+
+  // Build structured rows for each section
+  window._sheetsSections = {};
+
+  const toRow = (s, grade) => ({
+    'Name': s.name,
+    'ID': s.id || '',
+    'Grade': grade,
+    'SpeedGrader Link': s.id ? SG_BASE + s.id : ''
+  });
+
+  window._sheetsSections['Grade Pending'] = pending.map(s => toRow(s, s.grade || '0'));
+  window._sheetsSections['Update in Progress'] = updateInProgress.map(s => toRow(s, s.gradeAfter));
+  window._sheetsSections['Completed \u2013 Passed'] = passed.map(s => toRow(s, s.gradeAfter || s.grade));
+  window._sheetsSections['Not Passed \u2013 Resubmission'] = failed.map(s => toRow(s, s.gradeAfter || s.grade));
+
+  const cols = ['Name','ID','Grade','SpeedGrader Link'];
+  h += tableSection('Grade Pending', 'tag-pending', 'no action needed', pending.map(s => toRow(s, s.grade||'0')), cols);
+  h += tableSection('Update in Progress', 'tag-update', 'changed grades', updateInProgress.map(s => toRow(s, s.gradeAfter)), cols);
+  h += tableSection('Completed \u2013 Passed', 'tag-passed', 'passed', passed.map(s => toRow(s, s.gradeAfter||s.grade)), cols);
+  h += tableSection('Not Passed \u2013 Resubmission', 'tag-failed', 'failed', failed.map(s => toRow(s, s.gradeAfter||s.grade)), cols);
+
+  if (!pending.length && !updateInProgress.length && !passed.length && !failed.length) {
+    h = '<div class="empty-state"><i class="fa-solid fa-table"></i>No data to copy yet — run a comparison first</div>';
+  }
+
+  el.innerHTML = h;
+
+  // inject dynamic tag styles
+  const style = document.createElement('style');
+  style.textContent = '.tag-passed{background:var(--success-bg);color:var(--success-text)}.tag-failed{background:var(--danger-bg);color:var(--danger-text)}';
+  document.head.appendChild(style);
+}
+
+function copySection(encodedTitle) {
+  const title = decodeURIComponent(encodedTitle);
+  const rows = window._sheetsSections[title];
+  if (!rows || !rows.length) return;
+  const cols = ['Name','ID','Grade','SpeedGrader Link'];
+  const tsv = rows.map(r => cols.map(c => r[c]||'').join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    event.target.closest('button').innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+    setTimeout(() => event.target.closest('button').innerHTML = '<i class="fa-regular fa-copy"></i> Copy rows for "' + title + '"', 2000);
+  });
+}
+
+function copyNewStudents() {
+  if (!results) return;
+  const cols = ['Name','ID','Grade','SpeedGrader Link'];
+  const tsv = results.newStudents.map(s => [s.name, s.id||'', s.grade||'0', s.id ? SG_BASE+s.id : ''].join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => flashBtn(event, 'Copied!'));
+}
+
+function copyChangedStudents() {
+  if (!results) return;
+  const tsv = results.changedStudents.map(s => [s.name, s.id||'', s.gradeAfter, s.id ? SG_BASE+s.id : ''].join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => flashBtn(event, 'Copied!'));
+}
+
+function flashBtn(e, msg) {
+  const btn = e.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + msg;
+  setTimeout(() => btn.innerHTML = orig, 2000);
+}
+
+function renderFormulasTab(newStudents, changedStudents) {
+  const el = document.getElementById('formulasContent');
+  const SG_BASE_F = 'https://launchcode.instructure.com/courses/248/gradebook/speed_grader?assignment_id=22026&student_id=';
+
+  const pending = newStudents.filter(s => gradeStatus(s.grade) === 'pending');
+  const updateInProgress = changedStudents.filter(s => { const g = gradeStatus(s.gradeAfter); return g !== 'pending'; });
+  const passed = [...newStudents, ...changedStudents].filter(s => gradeStatus(s.gradeAfter || s.grade) === 'pass');
+  const failed = [...newStudents, ...changedStudents].filter(s => gradeStatus(s.gradeAfter || s.grade) === 'fail');
+
+  // All unique students from both lists
+  const all = [...newStudents, ...changedStudents];
+
+  function makeFormula(s) {
+    const grade = s.gradeAfter || s.grade || '0';
+    const url = SG_BASE_F + s.id;
+    return '=HYPERLINK("' + url + '","' + s.name.replace(/"/g, '""') + '")';
+  }
+
+  function sectionBlock(title, tagClass, tagLabel, rows) {
+    if (!rows.length) return '';
+    const sectionId = 'formula-' + title.replace(/\s+/g,'_').replace(/[^a-zA-Z_]/g,'');
+    window._formulaSections = window._formulaSections || {};
+    window._formulaSections[sectionId] = rows;
+
+    let h = '<div class="sheets-section">';
+    h += '<div class="sheets-section-label"><span>' + title + '</span><span class="tag ' + tagClass + '">' + tagLabel + '</span></div>';
+    h += '<div class="sheets-preview"><table><thead><tr><th>Hyperlink formula (paste into Name col)</th><th>ID</th><th>Grade</th></tr></thead><tbody>';
+    rows.slice(0,3).forEach(r => {
+      const grade = r.gradeAfter || r.grade || '0';
+      h += '<tr><td style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + makeFormula(r) + '</td><td>' + (r.id||'—') + '</td><td>' + gradePill(grade) + '</td></tr>';
+    });
+    if (rows.length > 3) h += '<tr><td colspan="3" style="color:var(--text3);font-style:italic">+ ' + (rows.length-3) + ' more rows</td></tr>';
+    h += '</tbody></table></div>';
+    h += '<div class="action-bar"><button class="btn" onclick="copyFormulas(\'' + sectionId + '\')"><i class="fa-regular fa-copy"></i> Copy formulas for "' + title + '"</button></div>';
+    h += '</div>';
+    return h;
+  }
+
+  let h = '<p style="font-size:13px;color:var(--text2);margin-bottom:6px">Each row pastes as a clickable hyperlink directly in the student name cell — no separate link column needed.</p>';
+  h += '<div style="background:var(--warn-bg);border:0.5px solid var(--warn-text);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--warn-text);margin-bottom:1rem;display:flex;align-items:flex-start;gap:8px"><i class="fa-solid fa-circle-info" style="margin-top:2px"></i><span>Paste using <strong>Ctrl+Shift+V</strong> (or Cmd+Shift+V on Mac) in Google Sheets to paste values only — otherwise Sheets may interpret the formula differently. Alternatively, paste into the formula bar directly.</span></div>';
+
+  h += sectionBlock('Grade Pending', 'tag-pending', 'no action needed', pending);
+  h += sectionBlock('Update in Progress', 'tag-update', 'changed grades', updateInProgress);
+  h += sectionBlock('Completed – Passed', 'tag-passed', 'passed', passed);
+  h += sectionBlock('Not Passed – Resubmission', 'tag-failed', 'failed', failed);
+
+  if (!all.length) {
+    h = '<div class="empty-state"><i class="fa-solid fa-link"></i>No data yet — run a comparison first</div>';
+  }
+
+  el.innerHTML = h;
+
+  const style = document.createElement('style');
+  style.textContent = '.tag-passed{background:var(--success-bg);color:var(--success-text)}.tag-failed{background:var(--danger-bg);color:var(--danger-text)}';
+  document.head.appendChild(style);
+}
+
+function copyFormulas(sectionId) {
+  const rows = (window._formulaSections || {})[sectionId];
+  if (!rows || !rows.length) return;
+  const SG_BASE_F = 'https://launchcode.instructure.com/courses/248/gradebook/speed_grader?assignment_id=22026&student_id=';
+  function makeFormula(s) {
+    const url = SG_BASE_F + s.id;
+    return '=HYPERLINK("' + url + '","' + s.name.replace(/"/g,'""') + '")';
+  }
+  const tsv = rows.map(s => {
+    const grade = s.gradeAfter || s.grade || '0';
+    return [makeFormula(s), s.id||'', grade].join('\t');
+  }).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => flashBtn(event, 'Copied!'));
+}
+
+function renderAsanaTab(newStudents, changedStudents) {
+  const today = new Date().toLocaleDateString('en-US', {month:'numeric',day:'numeric',year:'numeric'});
+  const failed = [...newStudents, ...changedStudents].filter(s => gradeStatus(s.gradeAfter || s.grade) === 'fail');
+  let text = today + ' Resubmission Enablement List\n\n';
+  if (!failed.length) {
+    text += '(No failed capstones to enable for resubmission today.)';
+  } else {
+    failed.forEach(s => { text += s.name + '\n' + (s.link || SG_BASE + s.id) + '\n\n'; });
+  }
+  text = text.trim();
+
+  const el = document.getElementById('asanaContent');
+  el.innerHTML = '<p style="font-size:13px;color:var(--text2);margin-bottom:10px">Pre-formatted task description for the subtask under "Daily monitor of AI 101 capstone interim process". Assign to @Christian Frauenhoffer.</p><div class="asana-box"><pre id="asanaText">' + text + '</pre></div><div class="action-bar" style="margin-top:10px"><button class="btn" onclick="copyAsana()"><i class="fa-regular fa-copy"></i> Copy task description</button></div>';
+}
+
+function copyAsana() {
+  const t = document.getElementById('asanaText').textContent;
+  navigator.clipboard.writeText(t).then(() => flashBtn(event, 'Copied!'));
+}
+
+function switchTab(name) {
+  const tabs = ['new','changed','sheets','formulas','asana'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === name));
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === 'tab-' + name));
+}
+</script>
+</body>
+</html>
